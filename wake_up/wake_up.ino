@@ -7,8 +7,8 @@
 #include <Pushbutton.h>
 
 
-int BUZZER_PIN = 4;
-int BTN_PIN = 8;
+int BUZZER_PIN = 2;
+int BTN_PIN = 4;
 
 Adafruit_SSD1306 display(4);
 RTC_DS1307 rtc;
@@ -36,31 +36,45 @@ void setup () {
   display.setTextSize(2);
 
   pinMode(BTN_PIN, INPUT);
-  digitalWrite(BTN_PIN, LOW);
+  pinMode(BUZZER_PIN, OUTPUT);
 
   Serial.println("Initializing alarm state machine");
-  machine = new AlarmStateMachine(rtc.now(), 9, 32);
+  machine = new AlarmStateMachine(rtc.now(), 6, 0);
 }
 
 void loop () {
   display.clearDisplay();
   display.setCursor(0, 0);
 
+  digitalWrite(BUZZER_PIN, HIGH);
+
   DateTime now = rtc.now();
   machine->setCurrentTime(now);
+  bool isBtnPressed = button.getSingleDebouncedPress();
+  bool isAlarming = machine->isAlarming;
 
-  Serial.println(machine->currentDisplay);
-  Serial.println(machine->isAlarming);
+  String state = "";
+  String alarmState = isAlarming ? "yes" : "no";
+  String btnState = isBtnPressed ? "yes" : "no";
+  state += machine->currentDisplay;
+  state += ", is alarming : ";
+  state += alarmState;
+  state += ", btn pressed: ";
+  state += btnState;
+  Serial.println(state);
 
   // read the state of the pushbutton value:
-  if (button.getSingleDebouncedPress()) {
-    Serial.println("btn pressed");
+  if (isBtnPressed) {
     machine->onWakeBtn();
+  }
+  if (isAlarming) {
+    digitalWrite(BUZZER_PIN, HIGH);
+  } else {
+    digitalWrite(BUZZER_PIN, LOW);
   }
 
   display.print(machine->currentDisplay);
-  digitalWrite(BUZZER_PIN, machine->isAlarming ? HIGH : LOW);
 
   display.display();
-  delay(100);
+  delay(250);
 }
